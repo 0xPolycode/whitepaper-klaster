@@ -1,0 +1,95 @@
+# Klaster Whitepaper
+
+An Interchain Commitment Layer
+
+Mislav Javor, Filip Dujmušić, Ivan Piton
+
+2024.
+
+## Intro & rationale 
+Blockchain, born out of the desire to create a global decentralized currency - Bitcoin, has evolved a lot over the fifteen years since it's been developed. The first evolution came in the form of smart contract blockchains. Recognizing the limitations of the "signle-app" model, the "world-computer" model of Ethereum was born. This has allowed developers to build trustless & trust-minimized applications and has resulted in the birth of several new industries - most notably DeFi and NFTs. 
+
+## Scalability challenges
+However, while Ethereum has sucessfully solved for the "programability" aspect of blockchain, many challenges have remained to be solved. The most notable of those is - scalability. Ethereum blockchain is notoriously unscalable - with a maximum throughput of ~15 transactions per second. In times of market demand, this can raise the fees for a simple "money transfer" action to well over $50. For more complex transactions, these fees can reach into the $100 - $1000 range. This issue has made DeFi the playground of the well-off and has stood as a barrier towards decentralized services reaching mainstream adoption.
+
+### Scaling solutions 
+The problem of blockchain scalability has had many solutions, some more sucessfull than others. This document will not serve to iterate over all of them, but just mention a few meaningful examples. First example were the various alerantive blockchains, which operated with a few masternodes processing the majority of transactions. Some examples include Polygon PoS & Binance Smart Chain. The second category were blockchains operating on a different model from Ethereum - impelmenting alternate virtual machines, sharding and many other scaling techniques. Some examples in this category include NEAR Protocol & Solana. The third category, and the one this paper will focus on the most are so-called "rollups". Rollups are attached to a "parent" blockchain and use some form of cryptography to "inherit" a part of all of the security of the "parent" blockchain. Most rollups today can broadly be split into two categories - **Optimistic Rollups** and **Zero Knowledge Rollups**. Some notable examples of rollups include Optimism, Base, Arbitrum, zkSync, Polygon zkEVM, Scroll, etc... 
+
+With the methods outlined in the text above, blockchain fees can be reduced to <$0.01 per transaction, which unlocks the potential of blockchain to a much wider audience. 
+
+### Data availability
+Coming back to rollups - in this paper we will focus on Ethereum-aligned rollups ("EVM Rollups"). In order to achieve the functionality promised by those rollups, a lot of changes needed to be done at the protocol level. 
+
+Since neither Ethereum nor its associated virtual machine - the EVM - were originally built with rollups in mind, the developers started adapting the core blockchains and building novel solutions to support functionality of rollups. The most notable one of these solutions was the appearance of "Data Avalibility" layers - protocols which store the data required by rollups to ensure the security of validated transactions. Some of these protocols include Celestia and NEAR. Even Ethereum itself adapted to support rollups - with the ERC4844 improvement - called "proto danksharding". While technically different, all of these protocols functionally achieve the same thing - they provide a cheap but ephemeral storage for rollup data - a technical prerequisite for rollups to hit the <$0.01/tx goal. 
+
+## Usability challenges
+While scalability has been touted as the biggest challenge towards the mainstream adoption of blockchain technology, it is by no means the only one. The usability of many blockchain architectures is substandard. Again, this paper will explore the Ethereum (EVM) ecosystem, but similar conclusions can be applied to other architectures.
+
+### Transaction Fees (Gas)
+One of the core features of smart contract blockchain architectures is the concept of "gas". Gas is used to pay for transactions and is usually denominated in a coin which is native to the blockchain on which the transaction is being executed on. On Ethereum, this coin is Ether (ETH). Gas is a necessary requirement for smart contract blockchains. It prevents malicious users griefing the nodes which validate the transactions by running expensive computation or infinite loops. However, gas introduces complexity when people are interacting with tokens which are not native to the blockchain on which the transaction is being executed on. 
+
+One example of such a token is _USDC_. This is a token, deployed on all major programmable blockchain networks which is tied 1:1 to the United Stated Dollar. Many users interact with these tokens, since they're looking to escape from the value volatility of crypto-only tokens, such as ETH or BTC. However, when a user is sending USDC to someone, they need to have not only USDC, but also the native currency. So in the case of sending ETH on Ethereum, the user must have USDC and ETH. 
+
+This means that users must continually maintain the balance of ETH and "seed" every new address that they create with an initial ETH balance. For new users, this is another friction point which requires a learning curve and disincetivizes adoption. 
+
+This problem has been explored and approached through many standards. On Ethereum, it's mainly solved by Account Abstraction teams working on standards such as ERC4337 & ERC3074. Later in this paper, we will present a novel approach to this problem.
+
+### Elliptic curves
+While interacting with smart contract blockchains, users must commit signed transactions to the blockchain. These transactions are based on asymetric cryptography, notably - elliptic curve cryptography. Each blockchain can choose their own curve, but the most popular one is `secp256k` used by Bitcoin, Ethereum and all EVM rollups. For example, Solana uses `curve25519` and thus validates the cryptographic commitments differently.
+
+Elliptic curve cryptography isn't specific to blockchains only, and many interesting solutions exist which implement different elliptic curves. One such example is _Passkey Authentication_, which uses `ES256` as its authetntication curve. In native blockchain implementations, these alternate methods are not supported - limiting the usability of blockchains.
+
+### Account recovery & protections
+Handling crypto in self-custody is off-putting to many users since they must take care of preserving their own accounts and protecting themselves from losses. If the users lose access to their private key, they lose access to their funds. While "crypto natives" have adjusted to this way of thinking - it remains a large hurdle towards adoption of crypto self-custody. 
+
+### Smart contract accounts
+Similar to solving the gas fee problem, the solutions to the usage of elliptic curves and account recovery are _Smart Contract Accounts_ (SCAs). These accounts can attach arbitrary execution logic to any transaction and as such they can improve the usability of blockchain systems substantially. Some examples of SCAs include:
+
+* Gas abstraction & sponsorship: Allowing the users to cover on-chain transcation fees with non-native assets _or_ allowing blockcahin applications to sponsor the gas costs for their users.
+
+* Account recovery: The ability for users to recover funds if they loose access to their private key. This can be done through a trusted recovery provider or through methods such as social recovery.
+
+* Custom elliptic curves: The ability for users to use passkeys or other cryptography which is not native to the core blockchain. 
+
+* Custom execution logic: The ability for users to customize the execution logic of their blockchain accounts. This includes setting spending limits, authorizing multiple signers, requiring a form of two-factor authentication, etc...
+
+## Interchain Commitment Layer
+
+In this paper, we are presenting a model for creating a P2P network, which is able to operate on top of _multichain smart accounts_. This capability enables users to use a single signature to execute multiple transactions across multiple independent blockchains. Beyond this, this network is VM-agnostic, meaning it can execute tranasactions on most smart contract blockchains. The network is also _conditional_ - it can execute transactions when certain conditions are met.
+
+### High level overview
+
+The Klaster network works in the following way: 
+
+1) Dapp/wallet creates a `Transaction Bundle`. The bundle contains all the required information for the nodes to execute a sequence of tranactions across multiple blockchains. It contains:
+    1) A list of transactions bundled as ERC4337 `UserOp` objects, with an extra information. The extra information on top of `UserOp` object is:
+        * `ChainID` on which they want the transaction to be executed.  
+        * `Salt` parameter, which determines on _which_ multichain smart account the transaction needs to be executed on.
+        * `Minimum Block Height` stating that the node will not execute the transaction before some lower-bound block height.  
+    2) Payment infomation. The user communicates a `PaymentInfo` object in which they specify how they would like to cover the cost of the transaction. This can include native gas payment, payment in a token (ERC20 or otherwise) or even an off-chain payment structure (pay by credit card, prepay trancations, subsidised transactions, ...)
+
+2) The dApp/wallet is connected to a _light node_ and sends the transaction bundle to that node. 
+
+3) The light node picks up the request and forwards it to the _full nodes_. 
+
+4) The full nodes respond with a `Transaction Quote`, which contains:
+    1) Information on the transactions being executed
+    2) Information on how much the node will charge the user to execute the entire bundle.
+    3) Expiry period information - setting the latest UTC timestamp until which the node is willing to execute the transaction with the terms offered.
+
+5) The Light Node gathers all of the quotes and uses some strategy to select the best quote. It can be based on price, reputation, expiry time, etc... It forwards this quote to the dApp/Wallet
+
+6) dApp/Wallet gets the quote from the light node and if it's acceptable it connectes directly to the full node.
+
+7) The full node receives the notice and uses the transactions in the `Transaction Quote` object to generate a Merkle Tree of transactions. It then signs the root hash of the Merkle Tree with its private key. This singed Merkle Tree root hash can later be used to slash the node, if it doesn't execute transactions under conditions laid out in the `Transaction Quote` it has signed.
+
+8) dApp/Wallet takes the signed Merkle Tree root hash and signs it again with the user private key. It then sends the double-signed Merkle Tree root hash to:
+    1) The full node which has commited to the transaction. This enables that node to start executing the `Transaction Bundle`. 
+    2) The light node. The light node will then send the signed transcation to other full nodes, which at that point act as _Witness_ nodes, confirming that the user has indeed sent the signed transaction to the Klaster network. This is required due to slashing conditions. 
+
+![Klaster Diagram](./assets/network-diagram.png)
+
+### Slashing conditions
+
+In order to achieve the desierd effects, the Klaster network uses cryptoeconomic security guarantees in the form of _staking_ and _slashing_. 
+
