@@ -1,10 +1,6 @@
 # Klaster Whitepaper
 
-An Interchain Commitment Layer
-
-Mislav Javor, Filip Dujmušić, Ivan Piton
-
-2024.
+*Interchain Transaction Commitment Network*
 
 ## Intro & rationale 
 Blockchain, born out of the desire to create a global decentralized currency - Bitcoin, has evolved a lot over the fifteen years since it's been developed. The first evolution came in the form of smart contract blockchains. Recognizing the limitations of the "signle-app" model, the "world-computer" model of Ethereum was born. This has allowed developers to build trustless & trust-minimized applications and has resulted in the birth of several new industries - most notably DeFi and NFTs. 
@@ -55,12 +51,18 @@ Similar to solving the gas fee problem, the solutions to the usage of elliptic c
 
 ## Interchain Commitment Layer
 
-In this paper, we are presenting a model for creating a P2P network, which is able to operate on top of _multichain smart accounts_. This capability enables users to use a single signature to execute multiple transactions across multiple independent blockchains. Beyond this, this network is VM-agnostic, meaning it can execute tranasactions on most smart contract blockchains. The network is also _conditional_ - it can execute transactions when certain conditions are met.
+In this paper, we are presenting a model for creating a P2P network, which is able to operate on top of _multichain smart accounts_. It combines the scalability benefits of a rollup-centric future, with the usability benefits of smart account systems, while remaining backwards-compatible with existing smart contracts and dApps.
+
+Klaster enables users to use a single signature to execute one or more transactions across multiple independent blockchains. The network is also _conditional_ - it can add execution logic to the transactions.
 
 ### High level overview
 
 The Klaster network works in the following way: 
 
+#### Multichain Smart Accounts
+Klaster Multichain smart accounts are built 
+
+#### Transaction execution flow
 1) Dapp/wallet creates a `Transaction Bundle`. The bundle contains all the required information for the nodes to execute a sequence of tranactions across multiple blockchains. It contains:
     1) A list of transactions bundled as ERC4337 `UserOp` objects, with an extra information. The extra information on top of `UserOp` object is:
         * `ChainID` on which they want the transaction to be executed.  
@@ -75,7 +77,7 @@ The Klaster network works in the following way:
 4) The full nodes respond with a `Transaction Quote`, which contains:
     1) Information on the transactions being executed
     2) Information on how much the node will charge the user to execute the entire bundle.
-    3) Expiry period information - setting the latest UTC timestamp until which the node is willing to execute the transaction with the terms offered.
+    3) Maximum block height for every `UserOp` the node has received. This sets the block height for every commited transaction, after which - if the node hasn't executed the transaction - it will get slashed.
 
 5) The Light Node gathers all of the quotes and uses some strategy to select the best quote. It can be based on price, reputation, expiry time, etc... It forwards this quote to the dApp/Wallet
 
@@ -87,9 +89,49 @@ The Klaster network works in the following way:
     1) The full node which has commited to the transaction. This enables that node to start executing the `Transaction Bundle`. 
     2) The light node. The light node will then send the signed transcation to other full nodes, which at that point act as _Witness_ nodes, confirming that the user has indeed sent the signed transaction to the Klaster network. This is required due to slashing conditions. 
 
-![Klaster Diagram](./assets/network-diagram.png)
+9) The node executes the transactions as it has commited to _or_ it fails to execute the transactions and gets slashed. 
+
+![Klaster Diagram](./assets/network-diagram-lnfn.png)
+
+### On-chain execution validation
+
+To enable nodes to participate in the transaction flow, each supported blockchain must have a `KlasterEntryPoint` singleton smart contract deployed(Note: This is a different contract than the EIP4337 `EntryPoint` contract). 
+
+The `EntryPoint` contract validates the condition for the transaction execution of `UserOp` objects contained within a `TransactionBundle`.
 
 ### Slashing conditions
 
-In order to achieve the desierd effects, the Klaster network uses cryptoeconomic security guarantees in the form of _staking_ and _slashing_. 
+In order to achieve the desierd effects, the Klaster network uses cryptoeconomic security guarantees in the form of _staking_ and _slashing_. In order to keep the nodes compliant to the tasks they're entrusted to do, the network requires them to post a *stake* in the $TBD token. The node operators post the token to the `StakingManager` smart contracts on the chains on which they wish to execute transactions. The EntryPoint smart contracts will not accept executions by nodes which don't have a stake in the contract. 
+
+The nodes are slashed for commiting to a transaction and then not executing it. One of the big benefits of the Klaster Protocol is the fact that the nodes never take custody of user funds nor do they have the ability to execute anything that the user hasn't explicitly signed. This achieves all major goals the protocol aimed to solve, while making the node implementation and slashing conditions surprisingly elegant.
+
+**Condition**: The node has commited itself to execute a `UserOp` on some chain with a maximum block height of `BH`. The chain has reached `BH`, but the node hasn't executed the `UserOp`. This has triggered a `challenge period` in which the node can be slashed.
+
+**Considerations**: The node not executing the commited transaction can be caused by the node itself beign malicious _or_ if the user has not returned the signed commitment hash to the node. The slashing mechanism protects both the user from the node and the node from the user.
+
+#### Slashing flow
+1) The _Witness_ nodes track onchain information and realize that the transaction hasn't been executed. 
+
+2) The _Witness_ nodes take the dual-signed Merkle Root hash and commit it to the blockchain `StakingManager` signleton contract.
+
+3) For every dual-signed hash the `StakingManager` receives it increments the `total slashing commitment` variable by the amount of stake the _Witness_ node had in the `StakingManager`. Once the `slashing commitment` variable reaches some `threshold` value set by the Klaster protocol, it slashes the offending node and distributes its slashed stake to the _Witness_ nodes which participated in the slashing.
+
+## Security assumptions
+
+In this part, we'll present a short, non-exhaustive, overview of the security assumptions for the protocol and slashing:
+
+* **Malicious Slashing** - A fair node can be slashed if certain (probabilistically unlikely) conditions are met:
+    * The user and _Witness_ nodes could collude to slash the node. This process would work in the following way:
+        1. The user requests a quote from the full node
+        2. The user accepts the quote
+        3. The full node signs the node commitment
+        4. The user never signs the quote and waits for the `max_block_height` that the full node has been reached. 
+        5. After that, the user sends the signed hash to the _Witness_ nodes
+        6. The _Witness_ nodes commit enough stake to slash the fair node.
+
+        The assumption, in this case, is that more than a set `threshold` amount of stake in the network will be malicious nodes. Further examination must be used to determine which `threshold` values are good in this case. Assuming `threshold` is set to some high amount - e.g. 51% - this should not be a problem.
+
+* **Low stake chains** - Since the stake is split across mutliple blockchains, a situation may arise where certain chains have a very low stake commited to them. This would increase the probability of a malicious actor taking over the `threshold` level of stake, creating useless `UserOp` requests and using the malicious staking mechanism metioned earlier to slash the fair nodes on that chain. 
+
+    One solution to this would be to have a unified stake, but this would depend on some form of state proof validation to communicate the fact that a certain action was not commited on `ChainA` to a unified `StakingManager` contract on e.g. Ethereum.  
 
