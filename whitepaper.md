@@ -91,6 +91,7 @@ The Klaster network works by allowing `Klaster Nodes` which stake tokens on the 
 
 9) The node executes the transactions as it has commited to _or_ it fails to execute the transactions and gets slashed. 
 
+![Transaction Flow](./assets/process.png)
 
 ### On-chain execution validation
 
