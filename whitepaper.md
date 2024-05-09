@@ -3,7 +3,7 @@
 *Interchain Commitment Layer*
 
 ## Intro & rationale 
-Blockchain, born out of the desire to create a global decentralized currency - Bitcoin, has evolved a lot over the fifteen years since it's been developed. The first evolution came in the form of smart contract blockchains. Recognizing the limitations of the "signle-app" model, the "world-computer" model of Ethereum was born. This has allowed developers to build trustless & trust-minimized applications and has resulted in the birth of several new industries - most notably DeFi and NFTs. 
+Blockchain, born out of the desire to create a global decentralized currency - Bitcoin, has evolved a lot over the fifteen years since it's been developed. The first evolution came in the form of smart contract blockchains. Recognizing the limitations of the "single-app" model, the "world-computer" model of Ethereum was born. This has allowed developers to build trustless & trust-minimized applications and has resulted in the birth of several new industries - most notably DeFi and NFTs. 
 
 ## Scalability challenges
 However, while Ethereum has sucessfully solved for the "programability" aspect of blockchain, many challenges have remained to be solved. The most notable of those is - scalability. Ethereum blockchain is notoriously unscalable - with a maximum throughput of ~15 transactions per second. In times of market demand, this can raise the fees for a simple "money transfer" action to well over $50. For more complex transactions, these fees can reach into the $100 - $1000 range. This issue has made DeFi the playground of the well-off and has stood as a barrier towards decentralized services reaching mainstream adoption.
