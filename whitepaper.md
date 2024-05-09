@@ -55,9 +55,33 @@ In this paper, we are presenting a model for creating a P2P network, which is ab
 
 Klaster enables users to use a single signature to execute one or more transactions across multiple independent blockchains. The network is also _conditional_ - it can add execution logic to the transactions.
 
+### Decoupling transaction commitment and execution
+
+When the architecture of blockchain networks was designed, the design considerations assumed a monolithic blockchain environment, where - even if multiple blockchains existed - their intercommunication would be limited. This is easy to notice from initial Ethereum 2.0 design goals - implementing sharding on top of a single blockchain.
+
+The industry, however, has moved in a direction of many, sometimes app-specific, blockchains which need frequent interchain communication. This has opened up the space to transfer value between them and many bridge and cross-chain swap providers have entered the market.
+
+However, one area remains neglected - transaction signing & commitment flows. In the current model, the user needs to sign a new transaction every time they're interacting with a new blockchain. The transactions themselves, even in account abstraction models, are single-chain by default. This design is inadequate for the multichain future. 
+
+Klaster has built a system - which can _decouple_ signing & commiting actions to the blockchain from the execution of the transactions themselves. Users are able to sequence multiple transactions, across multiple blockchains and have them executed by signing just a single signature.
+
+Beyond this, Klaster enables cryptoeconomically protected transaction scheduling - having nodes commit to execute certain transactions after some amount of time has elapsed. 
+
+
+This _Interchain Commitment Layer_ enables dApp developers to encode multichain actions as signle signatures, abstracts away gas payments and paves the way for a future where users interact with apps across fully independent blockchains, without even realizing it.
+
+This enables many interesting use-cases for dApp and wallet developers:
+
+- Execute a transaction on one chain, pay gas on another. 
+- Open multichain bridge + execute flows. These enable users to efortleslly onboard to new rollups, without ever explicitly "bridging" their assets.
+- Asset / balance abstraction. Apps can access funds that users have on blockchains which are not the same as the one the app is deployed on. The app would simply encode a transaction "bridge from chain A and execute on chain B". Unlike existing (bridge) solutions, this can all be done off-chain (in the SDK, or on frontend) - without the need to upgrade existing smart contracts.
+- Full chain abstraction. Even though more work needs to be done on this front, Klaster can serve as a base layer upon which developers build completely chain abstracted apps. For example - a version of AAVE where you can deposit USDC from multiple blockchains onto a signle one, with a single transaction. Once multichain tokens start to gain market adoption, Klaster can enable true chain-abstracted experiences - where users don't see and don't care - which blockchain they're interacting with.
+
+
+
 ### High level overview
 
-![Klaster Diagram](./assets/network-diagram-lnfn.png)
+![Klaster Diagram](https://github.com/0xPolycode/whitepaper-klaster/blob/master/assets/network-diagram-lnfn.png?raw=true)
 
 The Klaster network works by allowing `Klaster Nodes` which stake tokens on the `StakingManager` contracts on the supported blockchains to _commit_ signed `Transaction Bundles` by users. These transaction bundles can be multichain, multiaccount and can include scheduling information (execute after certain block height). The nodes are incentivized to execute the bundles by taking transcation fees. The nodes must cryptographically commit to execute the entire transaction bundle. If they fail to execute after commiting, they get slashed. 
 
@@ -91,7 +115,7 @@ The Klaster network works by allowing `Klaster Nodes` which stake tokens on the 
 
 9) The node executes the transactions as it has commited to _or_ it fails to execute the transactions and gets slashed. 
 
-![Transaction Flow](./assets/process.png)
+![Transaction Flow](https://github.com/0xPolycode/whitepaper-klaster/blob/master/assets/process.png?raw=true)
 
 ### On-chain execution validation
 
